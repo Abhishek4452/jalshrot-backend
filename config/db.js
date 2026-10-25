@@ -4,16 +4,21 @@ mongoose.set("bufferCommands", false);
 
 const connectDB = async () => {
   try {
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI is missing");
+    const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    if (!uri) {
+      throw new Error("MONGO_URI (or MONGODB_URI) is missing");
     }
 
-    await mongoose.connect(process.env.MONGO_URI, {
+    // Atlas URIs sometimes omit the database name — fall back to a named DB.
+    const hasDatabase = /^mongodb(\+srv)?:\/\/[^/]+\/[^?/]+/.test(uri);
+
+    await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 10000,
+      ...(hasDatabase ? {} : { dbName: process.env.MONGO_DB || "jalsrot" }),
     });
-    console.log("MongoDB Connected");
+    console.log(`MongoDB Connected (${mongoose.connection.name})`);
   } catch (error) {
-    console.error(error);
+    console.error(error.message || error);
     process.exit(1);
   }
 };
